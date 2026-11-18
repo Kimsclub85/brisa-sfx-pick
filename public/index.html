@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta name="robots" content="noindex, nofollow">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>브리사 SFX 고르기</title>
+<style>
+:root { --bg:#f6f4ef; --card:#fff; --ink:#1d1b18; --sub:#6b665e; --line:#e2ddd3; --pick:#0f6b5c; --pickbg:#e3f3ef; --tag:#efe9dc; --warn:#a4491f;
+  --wave:#b9b2a4; --played:#5b564d; --region:rgba(15,107,92,.22); --other:#c0762b; --paper:#fbf8f0; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg:#17181a; --card:#212327; --ink:#ecebe7; --sub:#a09c94; --line:#33363b; --pick:#5fd0b8; --pickbg:#1d3a35; --tag:#2c2f34; --warn:#f0a070;
+    --wave:#5a5e66; --played:#c9c6bf; --region:rgba(95,208,184,.25); --other:#e0a45e; --paper:#1c1d20; }
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 -apple-system, "Apple SD Gothic Neo", "Pretendard", sans-serif; }
+main { max-width:860px; margin:0 auto; padding:24px 16px 120px; }
+h1 { font-size:26px; margin:0 0 6px; }
+.lead { color:var(--sub); margin:0 0 14px; }
+.who { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:0 0 26px; padding:12px 14px; background:var(--card); border:1px solid var(--line); border-radius:12px; }
+.who b { margin-right:4px; }
+.who button { background:var(--tag); color:var(--ink); font-weight:500; padding:7px 14px; }
+.who button.on { background:var(--pick); color:var(--bg); }
+.who input { font:inherit; padding:6px 10px; border:1px solid var(--line); border-radius:10px; background:transparent; color:inherit; width:110px; }
+section { margin:0 0 44px; }
+h2 { font-size:20px; margin:0 0 2px; }
+.scene { color:var(--sub); font-size:14px; margin:0 0 10px; }
+.places { display:grid; gap:8px; margin:0 0 14px; }
+.place { background:var(--paper); border:1px solid var(--line); border-left:4px solid var(--pick); border-radius:10px; padding:10px 14px; font-size:14px; }
+.where { font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--pick); margin-bottom:4px; }
+.place p { margin:2px 0; color:var(--sub); }
+.place p b { color:var(--ink); font-weight:600; }
+.place p.mark { color:var(--ink); font-weight:700; background:var(--pickbg); border-radius:6px; padding:3px 8px; margin:6px -8px; }
+.cand { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:0 0 8px; }
+.cand.on { border-color:var(--pick); background:var(--pickbg); }
+.row { display:flex; gap:10px; align-items:flex-start; cursor:pointer; }
+.row input { margin-top:5px; accent-color:var(--pick); width:18px; height:18px; flex:none; }
+.name { font-weight:600; }
+.tag { display:inline-block; font-size:12px; background:var(--tag); border-radius:6px; padding:1px 7px; margin-left:6px; color:var(--sub); font-weight:500; white-space:nowrap; }
+.desc { color:var(--sub); font-size:14px; margin:2px 0 8px; }
+.player { display:flex; gap:10px; align-items:center; }
+.pp { flex:none; width:44px; height:44px; border-radius:50%; padding:0; font-size:16px; }
+canvas.wave { flex:1; min-width:0; height:64px; border-radius:8px; background:var(--bg); cursor:crosshair; touch-action:pan-y; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
+@media (pointer:coarse) { .tools button { padding:10px 14px; } }
+.tools { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-top:6px; font-size:13px; color:var(--sub); font-variant-numeric:tabular-nums; }
+.tools button { font-size:13px; font-weight:500; padding:5px 10px; background:var(--tag); color:var(--ink); }
+.tools button.on { background:var(--pick); color:var(--bg); }
+.tools .time { margin-left:auto; }
+textarea { width:100%; min-height:40px; margin-top:8px; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:transparent; color:var(--ink); font:inherit; font-size:16px; resize:vertical; }   /* 16px보다 작으면 iOS가 누를 때 화면을 확대함 */
+.others { margin:8px 0 0; padding:0; list-style:none; font-size:14px; }
+.others li { padding:5px 0 0; border-top:1px dashed var(--line); margin-top:5px; }
+.others b { color:var(--other); }
+.bar { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line); padding:10px 16px calc(10px + env(safe-area-inset-bottom)); }
+#refresh { flex:none; white-space:nowrap; }
+@media (max-width:480px) { #refresh { padding:10px 12px; font-size:14px; } }
+.bar div { max-width:860px; margin:0 auto; display:flex; gap:12px; align-items:center; justify-content:space-between; }
+button { font:inherit; font-weight:600; border:0; border-radius:10px; padding:10px 16px; background:var(--pick); color:var(--bg); cursor:pointer; }
+#status { color:var(--sub); font-size:14px; }
+#status.bad { color:var(--warn); }
+</style>
+</head>
+<body>
+<main>
+<h1>브리사 SFX 고르기</h1>
+<p class="lead">대본에 나오는 순서대로야. 묶음마다 대본의 어느 자리인지 먼저 보고, 마음에 드는 후보 하나를 골라 줘. 파형을 누르면 그 자리부터 들리고, 파형 위를 드래그하면 루프 구간이 잡혀. 적는 대로 저장되고 다른 사람이 남긴 것도 같이 보여.</p>
+<div class="who" id="who"></div>
+<div id="app-root"></div>
+</main>
+<div class="bar"><div><span id="status">불러오는 중…</span><button id="refresh">다른 사람 의견 새로 보기</button></div></div>
+<div id="gate">
+  <form id="gate-f">
+    <h2>브리사 SFX 고르기</h2>
+    <p>창작진용 공유 페이지야. 비밀번호를 넣어줘.</p>
+    <input id="gate-pw" type="password" autocomplete="current-password" placeholder="비밀번호" required>
+    <label><input id="gate-keep" type="checkbox" checked> 이 기기에서 기억하기</label>
+    <button>열기</button>
+    <div id="gate-msg"></div>
+  </form>
+</div>
+<style>
+#gate { --g-bg: #f6f4ef; --g-card: #fff; --g-fg: #222; --g-mute: #777; --g-line: #ddd; --g-acc: #2f5d8a;
+  position: fixed; inset: 0; z-index: 99; display: grid; place-items: center; padding: 16px; background: var(--g-bg); color: var(--g-fg); }
+@media (prefers-color-scheme: dark) { #gate { --g-bg: #16171a; --g-card: #212227; --g-fg: #eee; --g-mute: #999; --g-line: #3a3b40; --g-acc: #7fb0e0; } }
+#gate form { width: min(360px, 100%); background: var(--g-card); border: 1px solid var(--g-line); border-radius: 12px; padding: 24px; display: grid; gap: 12px; font: 15px/1.5 -apple-system, "Apple SD Gothic Neo", sans-serif; }
+#gate h2 { margin: 0; font-size: 20px; }
+#gate p { margin: 0; color: var(--g-mute); font-size: 14px; }
+#gate input[type=password] { font: inherit; padding: 10px 12px; border: 1px solid var(--g-line); border-radius: 8px; background: transparent; color: inherit; }
+#gate label { font-size: 13px; color: var(--g-mute); display: flex; gap: 6px; align-items: center; }
+#gate button { font: inherit; padding: 10px; border: 0; border-radius: 8px; background: var(--g-acc); color: #fff; cursor: pointer; }
+#gate-msg { font-size: 13px; color: var(--g-mute); min-height: 1.5em; }
+</style>
+<script>
+(() => {
+  const msg = t => document.getElementById("gate-msg").textContent = t;
+  const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+  let man, key, files;
+  const dec = async buf => new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: buf.slice(0, 12) }, key, buf.slice(12)));
+  async function get(path) {
+    const e = files[path]; if (!e) throw new Error("없는 파일: " + path);
+    const r = await fetch(e.f); if (!r.ok) throw new Error(r.status);
+    const total = +r.headers.get("content-length") || 0, rd = r.body.getReader(), parts = []; let got = 0;
+    for (;;) {
+      const { done, value } = await rd.read(); if (done) break;
+      parts.push(value); got += value.length;
+      if (total > 2e6) document.getElementById("status").textContent = `음원 받는 중… ${Math.round(got / total * 100)}%`;
+    }
+    const all = new Uint8Array(got); let o = 0; for (const p of parts) { all.set(p, o); o += p.length; }
+    return [await dec(all), e.type];
+  }
+  const urls = {};
+  window.SRC = {
+    readonly: true,
+    json: async p => JSON.parse(new TextDecoder().decode((await get(p))[0])),
+    url: async p => urls[p] ||= (([b, t]) => URL.createObjectURL(new Blob([b], { type: t })))(await get(p)),
+  };
+  async function unlock(raw) {
+    key = await crypto.subtle.importKey("raw", raw, "AES-GCM", true, ["decrypt"]);
+    if (new TextDecoder().decode(await dec(b64(man.check))) !== "brisa-ok") throw 0;
+    files = JSON.parse(new TextDecoder().decode(await dec(b64(man.files))));
+  }
+  function start() {
+    document.getElementById("gate").remove();
+    const s = document.createElement("script"); s.textContent = document.getElementById("app").textContent; document.body.appendChild(s);
+  }
+  const KEEP = "brisa-gate-" + location.pathname;
+  (async () => {
+    man = await fetch("x/manifest.json", { cache: "no-cache" }).then(r => r.json());
+    try { const k = localStorage.getItem(KEEP); if (k && k.startsWith(man.salt + ":")) { await unlock(b64(k.split(":")[1])); return start(); } } catch {}
+  })().catch(e => msg("불러오기 실패: " + e));
+  document.getElementById("gate-f").onsubmit = async ev => {
+    ev.preventDefault(); msg("확인 중…");
+    try {
+      const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(document.getElementById("gate-pw").value), "PBKDF2", false, ["deriveBits"]);
+      const raw = new Uint8Array(await crypto.subtle.deriveBits({ name: "PBKDF2", salt: b64(man.salt), iterations: man.iter, hash: "SHA-256" }, base, 256));
+      await unlock(raw);
+      if (document.getElementById("gate-keep").checked) try { localStorage.setItem(KEEP, man.salt + ":" + btoa(String.fromCharCode(...raw))); } catch {}
+      start();
+    } catch { msg("비밀번호가 틀렸어."); }
+  };
+})();
+</script>
+<script type="text/plain" id="app">
+// 로컬에서 열면 파일을 그대로 읽고, 공유본에서는 잠금 화면이 window.SRC(암호 풀어 주는 쪽)를 먼저 만들어 둔다.
+window.SRC = window.SRC || { json: p => fetch(p).then(r => r.json()), url: async p => p.split('/').map(encodeURIComponent).join('/') };
+const DATA = 'publish/pick_data.json', CONFIG = 'publish/config.json';
+const NAMES = ['태기', '수빈', '승현'];
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sec = t => (Math.round(t * 10) / 10).toFixed(1);
+const r1 = t => Math.round(t * 10) / 10;
+const status = (t, bad) => { const s = $('#status'); s.textContent = t; s.classList.toggle('bad', !!bad); };
+
+let D, CFG = null, ALL = {}, BYF = {};  // ALL = { 이름: 그 사람의 기록 }, BYF = { 파일: 후보 }
+let WHO = '';
+try { WHO = localStorage.getItem('brisa-sfx-who') || ''; } catch (e) {}
+const blank = () => ({ groups: {}, cands: {} });
+const mine = () => (ALL[WHO] = ALL[WHO] || blank());
+const myCand = f => ((ALL[WHO] || {}).cands || {})[f] || {};
+
+// ── 저장소: 공유본은 GitHub 저장소의 feedback/<이름>.json, 로컬은 이 브라우저에만.
+const api = (path, opt = {}) => fetch(`https://api.github.com/repos/${CFG.repo}/contents/${path}`, Object.assign(opt, {
+  headers: Object.assign({ Authorization: 'Bearer ' + CFG.token, Accept: 'application/vnd.github+json' }, opt.headers || {}) }));
+const b64e = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
+const b64d = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g, '')), c => c.charCodeAt(0)));
+const SHA = {};
+let dirty = false, timer = 0, saving = false;
+async function loadAll() {
+  if (!CFG) { try { ALL = JSON.parse(localStorage.getItem('brisa-sfx-pick-local')) || {}; } catch (e) {} return; }
+  const r = await api('feedback', { cache: 'no-store' });
+  if (r.status === 404) return;
+  if (!r.ok) throw new Error('의견 불러오기 실패 ' + r.status);
+  const next = {};
+  await Promise.all((await r.json()).filter(f => f.name.endsWith('.json')).map(async f => {
+    const j = await (await api('feedback/' + encodeURIComponent(f.name), { cache: 'no-store' })).json();
+    SHA[f.name] = j.sha; next[f.name.slice(0, -5)] = JSON.parse(b64d(j.content));
+  }));
+  if (WHO && dirty) next[WHO] = ALL[WHO];   // 아직 안 올라간 내 수정은 지키기
+  ALL = next;
+}
+function changed() { dirty = true; status('저장 대기…'); clearTimeout(timer); timer = setTimeout(push, 1200); }
+async function push() {
+  if (!WHO || !dirty || saving) return;
+  saving = true; dirty = false;
+  const body = Object.assign({ who: WHO, updated: new Date().toISOString() }, mine());
+  try {
+    if (!CFG) localStorage.setItem('brisa-sfx-pick-local', JSON.stringify(ALL));
+    else {
+      const name = WHO + '.json', put = sha => api('feedback/' + encodeURIComponent(name), { method: 'PUT',
+        body: JSON.stringify({ message: `feedback: ${WHO}`, content: b64e(JSON.stringify(body, null, 1)), sha }) });
+      let r = await put(SHA[name]);
+      if (r.status === 409 || r.status === 422) {   // 다른 기기에서 먼저 저장한 경우: 최신 sha로 한 번 더
+        const cur = await api('feedback/' + encodeURIComponent(name), { cache: 'no-store' });
+        r = await put(cur.ok ? (await cur.json()).sha : undefined);
+      }
+      if (!r.ok) throw new Error(r.status);
+      SHA[name] = (await r.json()).content.sha;
+    }
+    status(`${WHO} 이름으로 저장됨 · ${new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })}` + (CFG ? '' : ' (이 브라우저에만)'));
+  } catch (e) { dirty = true; status('저장 실패: ' + e.message + ' — 잠시 뒤 다시 시도해', true); timer = setTimeout(push, 8000); }
+  saving = false;
+  if (dirty) changed();
+}
+
+// ── 화면
+function whoBar() {
+  const custom = WHO && !NAMES.includes(WHO) ? WHO : '';
+  $('#who').innerHTML = '<b>나는</b>' + NAMES.map(n => `<button data-who="${n}" class="${WHO === n ? 'on' : ''}">${n}</button>`).join('') +
+    `<input id="who-x" placeholder="다른 이름" value="${esc(custom)}">` + (WHO ? '' : '<span style="color:var(--warn)">← 먼저 이름을 골라 줘</span>');
+}
+function setWho(n) {
+  n = n.trim().replace(/[\/\\?#%]/g, '');
+  if (n === WHO) return;
+  WHO = n; try { localStorage.setItem('brisa-sfx-who', n); } catch (e) {}
+  whoBar(); paint();
+  status(WHO ? `${WHO} 이름으로 적는 중` : '이름을 먼저 골라 줘');
+}
+const speak = t => esc(t).replace(/^\[([^\]]+)\]/, '<b>$1</b>');
+const tail = t => t.length > 96 ? '… ' + t.slice(-92) : t;      // 지문 앞줄은 끝부분이, 뒷줄은 앞부분이 중요
+const head = t => t.length > 96 ? t.slice(0, 92) + ' …' : t;
+const placeHtml = s => `<div class="place"><div class="where">${s.p}쪽 · 큐 ${esc(s.cue)} ${esc(s.name)}</div>
+  ${s.before.map(t => `<p>${speak(tail(t))}</p>`).join('')}<p class="mark">♪ ${esc(head(s.mark))}</p>${s.after.map(t => `<p>${speak(head(t))}</p>`).join('')}</div>`;
+function othersHtml(f, gid) {
+  return Object.entries(ALL).filter(([n]) => n !== WHO).map(([n, a]) => {
+    const c = (a.cands || {})[f] || {}, picked = ((a.groups || {})[gid] || {}).pick === f, bits = [];
+    if (picked) bits.push('고름');
+    if (c.s != null || c.e != null) bits.push(`루프 ${sec(c.s || 0)} – ${c.e != null ? sec(c.e) : '끝'}초`);
+    if (c.note) bits.push(esc(c.note));
+    return bits.length ? `<li><b>${esc(n)}</b> ${bits.join(' · ')}</li>` : '';
+  }).join('');
+}
+function render() {
+  $('#app-root').innerHTML = D.groups.map(g => `
+<section data-g="${g.id}">
+  <h2>${esc(g.title)}</h2>
+  <p class="scene">${esc(g.scene)}</p>
+  <div class="places">${(g.script || []).map(placeHtml).join('')}</div>
+  ${g.c.map(c => `<div class="cand" data-f="${esc(c.f)}">
+    <label class="row"><input type="radio" name="${g.id}" value="${esc(c.f)}">
+      <span><span class="name">${esc(c.n)}</span><span class="tag">${esc(c.t)}</span></span></label>
+    <p class="desc">${esc(c.d)}</p>
+    <div class="player"><button class="pp" aria-label="재생">▶</button><canvas class="wave"></canvas></div>
+    <div class="tools"><button data-a="l" class="on">구간 반복</button><button data-a="x">구간 지우기</button><span class="loop"></span><span class="time"></span></div>
+    <textarea data-note placeholder="이 후보에 대한 코멘트"></textarea>
+    <ul class="others"></ul>
+  </div>`).join('')}
+  <div class="cand" data-f="none"><label class="row"><input type="radio" name="${g.id}" value="none"><span class="name">다 별로 — 다시 찾거나 다시 만들기</span></label><ul class="others"></ul></div>
+  <textarea data-memo placeholder="이 묶음 전체에 대한 메모 (예: 더 조용하게, 인원이 더 많게)"></textarea>
+  <ul class="others" data-gmemo></ul>
+</section>`).join('');
+  paint();
+}
+function paint() {
+  const me = WHO ? mine() : blank();
+  document.querySelectorAll('section').forEach(sc => {
+    const gid = sc.dataset.g, g = me.groups[gid] || {};
+    sc.querySelectorAll('.cand').forEach(el => {
+      const f = el.dataset.f, c = me.cands[f] || {}, on = g.pick === f;
+      el.classList.toggle('on', on);
+      $('input[type=radio]', el).checked = on;
+      const note = $('[data-note]', el);
+      if (note && document.activeElement !== note) note.value = c.note || '';
+      $('.others', el).innerHTML = othersHtml(f, gid);
+      if (BYF[f]) draw(el);
+    });
+    const memo = $('[data-memo]', sc);
+    if (document.activeElement !== memo) memo.value = g.memo || '';
+    $('[data-gmemo]', sc).innerHTML = Object.entries(ALL).filter(([n, a]) => n !== WHO && ((a.groups || {})[gid] || {}).memo)
+      .map(([n, a]) => `<li><b>${esc(n)}</b> ${esc(a.groups[gid].memo)}</li>`).join('');
+  });
+}
+const need = () => WHO ? true : (status('먼저 위에서 이름을 골라 줘', true), window.scrollTo({ top: 0, behavior: 'smooth' }), false);
+const candOf = el => el.closest('.cand'), gOf = el => el.closest('section').dataset.g;
+
+// ── 파형. 누르면 그 자리부터 재생, 드래그하면 루프 구간. 구간 끝을 잡아끌면 그 끝만 움직인다.
+const AUD = {};           // 파일 → audio (처음 들을 때 만든다)
+let TEMP = null;          // 드래그하는 동안의 임시 구간 { f, s, e }
+function region(f) { if (TEMP && TEMP.f === f) return TEMP; const c = myCand(f); return c.s != null || c.e != null ? { s: c.s || 0, e: c.e != null ? c.e : BYF[f].dur } : null; }
+function draw(el) {
+  const f = el.dataset.f, c = BYF[f], cv = $('canvas', el), css = getComputedStyle(document.documentElement), v = n => css.getPropertyValue(n).trim();
+  const dpr = devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight;
+  if (!W) return;
+  if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
+  const a = AUD[f], now = a ? a.currentTime : 0, px = t => t / c.dur * W, rg = region(f);
+  if (rg) { x.fillStyle = v('--region'); x.fillRect(px(rg.s), 0, px(rg.e) - px(rg.s), H); }
+  const n = c.peaks.length, bw = W / n;
+  for (let i = 0; i < n; i++) {
+    const h = Math.max(1.5, c.peaks[i] / 99 * (H - 14)), t = (i + 0.5) / n * c.dur;
+    x.fillStyle = t <= now && a ? v('--played') : v('--wave');
+    x.fillRect(i * bw, (H - 6 - h) / 2, Math.max(1, bw - 0.6), h);
+  }
+  if (rg) { x.fillStyle = v('--pick'); x.fillRect(px(rg.s) - 1, 0, 2, H); x.fillRect(px(rg.e) - 1, 0, 2, H); }
+  let row = 0;            // 다른 사람이 잡은 구간은 아래쪽 가는 띠로
+  for (const [name, o] of Object.entries(ALL)) {
+    const oc = (o.cands || {})[f] || {};
+    if (name === WHO || (oc.s == null && oc.e == null)) continue;
+    x.fillStyle = v('--other'); x.fillRect(px(oc.s || 0), H - 3 - row * 4, px(oc.e != null ? oc.e : c.dur) - px(oc.s || 0), 2.5); row++;
+  }
+  if (a) { x.fillStyle = v('--ink'); x.fillRect(px(now) - 0.75, 0, 1.5, H); }
+  $('.loop', el).textContent = rg ? `루프 ${sec(rg.s)} – ${sec(rg.e)}초 (${sec(rg.e - rg.s)}초)` : '파형을 드래그하면 루프 구간';
+  $('.time', el).textContent = `${sec(now)} / ${sec(c.dur)}초`;
+  $('.pp', el).textContent = a && !a.paused ? '❚❚' : '▶';
+}
+function audio(el) {
+  const f = el.dataset.f;
+  if (AUD[f]) return AUD[f].ready;
+  $('.pp', el).textContent = '…';
+  const a = AUD[f] = new Audio();
+  a.play().catch(() => {});   // iOS는 누르는 순간에 play()를 불러 둔 audio만, 음원을 다 받은 뒤의 재생을 허락한다
+  return a.ready = SRC.url(D.dir + f + '.m4a').then(u => {
+    a.addEventListener('play', () => { for (const [k, o] of Object.entries(AUD)) if (o !== a) o.pause(); tick(el); });
+    a.addEventListener('pause', () => draw(el));
+    a.addEventListener('ended', () => { if (loopOn(el)) { a.currentTime = (region(f) || { s: 0 }).s; a.play(); } else draw(el); });
+    a.src = u;
+    return a;
+  });
+}
+const loopOn = el => $('[data-a=l]', el).classList.contains('on');
+function tick(el) {       // 재생 중에는 매 프레임: 재생선 그리기 + 구간 끝에서 되돌리기
+  const f = el.dataset.f, a = AUD[f];
+  if (!a || a.paused) return;
+  const rg = region(f);
+  if (rg && loopOn(el) && !TEMP && (a.currentTime >= rg.e || a.currentTime < rg.s - 0.4)) a.currentTime = rg.s;
+  draw(el); requestAnimationFrame(() => tick(el));
+}
+let DRAG = null;
+document.addEventListener('pointerdown', e => {
+  if (!e.target.classList.contains('wave')) return;
+  const cv = e.target, el = candOf(cv), f = el.dataset.f, box = cv.getBoundingClientRect(), dur = BYF[f].dur;
+  const t = Math.max(0, Math.min(dur, (e.clientX - box.left) / box.width * dur)), rg = region(f), near = (e.pointerType === 'touch' ? 22 : 9) / box.width * dur;
+  delete cv.dataset.tap;
+  DRAG = { cv, el, f, box, dur, x0: e.clientX, t0: t, moved: false,
+           fix: rg && Math.abs(t - rg.s) < near ? rg.e : rg && Math.abs(t - rg.e) < near ? rg.s : null };
+  cv.setPointerCapture(e.pointerId);
+});
+document.addEventListener('pointermove', e => {
+  if (!DRAG) return;
+  const d = DRAG, t = Math.max(0, Math.min(d.dur, (e.clientX - d.box.left) / d.box.width * d.dur));
+  if (!d.moved && Math.abs(e.clientX - d.x0) < 5) return;
+  d.moved = true;
+  const a0 = d.fix != null ? d.fix : d.t0;
+  TEMP = { f: d.f, s: r1(Math.min(a0, t)), e: r1(Math.max(a0, t)) };
+  draw(d.el);
+});
+document.addEventListener('pointerup', async e => {
+  if (!DRAG) return;
+  const d = DRAG, tmp = TEMP; DRAG = null; TEMP = null;
+  if (d.moved && tmp && tmp.e - tmp.s >= 0.3) {
+    if (need()) { Object.assign(mine().cands[d.f] = mine().cands[d.f] || {}, { s: tmp.s, e: tmp.e }); changed(); }
+    draw(d.el);
+    const a = AUD[d.f]; if (a && WHO) a.currentTime = tmp.s;   // 듣고 있었으면 새 구간 처음으로
+    return;
+  }
+  draw(d.el);
+  if (d.moved) return;
+  d.cv.dataset.tap = d.t0;   // 그냥 누른 것: 바로 이어지는 click에서 그 자리부터 재생 (터치에서는 click이어야 재생이 허락됨)
+});
+document.addEventListener('pointercancel', () => { if (DRAG) { const el = DRAG.el; DRAG = null; TEMP = null; draw(el); } });
+addEventListener('resize', () => document.querySelectorAll('.cand[data-f]').forEach(el => BYF[el.dataset.f] && draw(el)));
+
+document.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.dataset.who) return setWho(t.dataset.who);
+  if (t.id === 'refresh') { status('불러오는 중…'); try { await loadAll(); paint(); status('최신 의견을 불러왔어'); } catch (err) { status(err.message, true); } return; }
+  if (t.dataset.tap != null) { const t0 = +t.dataset.tap; delete t.dataset.tap; const a = await audio(candOf(t)); a.currentTime = t0; a.play(); return; }
+  if (t.classList.contains('pp')) {
+    const el = candOf(t);
+    try { const a = await audio(el); if (a.paused) { const rg = region(el.dataset.f); if (rg && loopOn(el) && (a.currentTime < rg.s || a.currentTime >= rg.e)) a.currentTime = rg.s; a.play(); } else a.pause(); }
+    catch (err) { delete AUD[el.dataset.f]; t.textContent = '▶'; status('음원을 못 불러왔어. 다시 눌러 줘', true); }
+    return;
+  }
+  if (t.dataset.a === 'l') { t.classList.toggle('on'); return; }
+  if (t.dataset.a === 'x') {
+    const el = candOf(t), c = myCand(el.dataset.f);
+    if (c.s == null && c.e == null) return;
+    delete c.s; delete c.e; draw(el); changed();
+  }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'who-x') return setWho(t.value);
+  if (t.type !== 'radio') return;
+  if (!need()) return paint();
+  (mine().groups[t.name] = mine().groups[t.name] || {}).pick = t.value;
+  paint(); changed();
+});
+document.addEventListener('input', e => {
+  const t = e.target;
+  if (!('note' in t.dataset) && !('memo' in t.dataset)) return;
+  if (!need()) { t.value = ''; return; }
+  if ('note' in t.dataset) { const f = candOf(t).dataset.f; (mine().cands[f] = mine().cands[f] || {}).note = t.value; }
+  else (mine().groups[gOf(t)] = mine().groups[gOf(t)] || {}).memo = t.value;
+  changed();
+});
+addEventListener('beforeunload', e => { if (dirty) { push(); e.preventDefault(); } });
+
+(async () => {
+  try {
+    D = await SRC.json(DATA);
+    for (const g of D.groups) for (const c of g.c) BYF[c.f] = c;
+    try { CFG = await SRC.json(CONFIG); if (!CFG || !CFG.token) CFG = null; } catch (e) { CFG = null; }
+    await loadAll();
+    whoBar(); render();
+    status(WHO ? `${WHO} 이름으로 적는 중` : '먼저 위에서 이름을 골라 줘');
+  } catch (e) { status('불러오기 실패: ' + e.message, true); }
+})();
+</script>
+</body>
+</html>
